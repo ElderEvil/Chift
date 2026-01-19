@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16
+    container_name: chift_db
+    environment:
+      POSTGRES_USER: chift
+      POSTGRES_PASSWORD: chift_password
+      POSTGRES_DB: chift_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chift"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: chift_api
+    ports:
+      - "8000:8000"
+    environment:
+      # Odoo Configuration
+      ODOO_URL: ${ODOO_URL}
+      ODOO_DB: ${ODOO_DB}
+      ODOO_USERNAME: ${ODOO_USERNAME}
+      ODOO_PASSWORD: ${ODOO_PASSWORD}
+
+      # Database Configuration
+      DATABASE_URL: postgresql://chift:chift_password@db:5432/chift_db
+
+      # Sync Configuration
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-15}
+
+      # API Security
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+
+      # API Configuration
+      API_V1_PREFIX: /api/v1
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
